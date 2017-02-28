@@ -21,6 +21,8 @@ import glob
 import paul
 import argparse
 from Adafruit_IO import Client
+import json
+from pprint import pprint
 
 # parsing
 parser = argparse.ArgumentParser(description='Furnace control & data acquisition')
@@ -141,30 +143,20 @@ def prowl(event, description, pri=None):
             logger.error('prowl error')
         return
 
-# temp prob def
-def read_temp_raw():
-        if not args.test:
-                f = open(device_file, 'r')
-                lines = f.readlines()
-                f.close()
-        else:
-                lines = ''
-        return lines
+# load JSON file
+# process JSON file
+# get temp
+# get activity
+# update ISY vars
+
+def load_status():
+        with open('status.json') as data_file:
+                data = json.load(data_file)
+        return data
+
+
 
 def read_temp():
-        if not args.test:
-            lines = read_temp_raw()
-            while lines[0].strip()[-3:] != 'YES':
-                time.sleep(0.2)
-                lines = read_temp_raw()
-            equals_pos = lines[1].find('t=')
-            if equals_pos != -1:
-                temp_string = lines[1][equals_pos+2:]
-                temp_c = float(temp_string) / 1000.0
-                temp_f = temp_c * 9.0 / 5.0 + 32.0
-        else:
-            temp_c = temp_c_test
-            temp_f = temp_c * 9.0 / 5.0 + 32.0
 
         if temp_f > temp_f_hi:
             status = 'hi'
@@ -172,35 +164,21 @@ def read_temp():
             status = 'lo'
         else:
             status = 'ok'
-        return round(temp_c,2), round(temp_f,2), status
+        return temp_f, status
 
 # push temp status to prowl
 def pushtempstatus():
     if "status_old" not in pushtempstatus.__dict__: pushtempstatus.status_old = 'first run'
-    deg_c, deg_f, status = read_temp()
+    deg_f, status = read_temp()
     if status != pushtempstatus.status_old:
         prowl('temperature ', (" *** " + status + " " + str(deg_f) + ' ***'), ((status == 'ok') * -2))
         pushtempstatus.status_old = status
     return
 
-# relay def
-def relay1_on():
-    if not args.test:
-        GPIO.output(17, GPIO.LOW)
-    logger.info('relay1_on')
-    return
-
-def relay1_off():
-    if not args.test:
-        GPIO.output(17, GPIO.HIGH)
-    logger.info('relay1_off')
-    return
-
-
 # writing of temps
 def templog():
-    deg_c, deg_f, status = read_temp()
-    templogger.info('{2}, {0:.2f}, {1:.2f}'.format(deg_c, deg_f, status))
+    deg_f, status = read_temp()
+    templogger.info('{1}, {0:f}'.format(deg_f, status))
     aio.send(args.stream, deg_f)
     return
 
@@ -227,11 +205,11 @@ def heartbeat(ast):
 
 def scheduling():
     # set scheduled events
-    schedule.every().day.at(start_str).do(relay1_on)  # light/bubbler ON in morning
-    schedule.every().day.at(end_str).do(relay1_off)   # light/bubler OFF at night
-    schedule.every(10).minutes.do(templog)    # log temp to templogger
-    schedule.every().day.do(dailylog)    # daily log temp to logger & temp logger
-    schedule.every(15).minutes.do(pushtempstatus) # push temperature status to prowl
+    # schedule.every().day.at(start_str).do(relay1_on)  # light/bubbler ON in morning
+    # schedule.every().day.at(end_str).do(relay1_off)   # light/bubler OFF at night
+    # schedule.every(10).minutes.do(templog)    # log temp to templogger
+    # schedule.every().day.do(dailylog)    # daily log temp to logger & temp logger
+    # schedule.every(15).minutes.do(pushtempstatus) # push temperature status to prowl
     logger.info('scheduling set')
     return
 
@@ -245,30 +223,26 @@ def main():
     timestamp = dt.datetime.now().time()
     logger.info('nowtime ='+ str(timestamp)[:5])
 
-    # log & push temp on first run
-    dailylog()
-    pushtempstatus()
+    # log & push status on first run
+    #dailylog()
+
+    data=load_status()
     hb = "*"
+    if args.test:
+        pprint()
+        return
 
     while True:
         schedule.run_pending()
         try:
             time.sleep(60) # wait one minute
             hb = heartbeat(hb)
-            deg_c, deg_f, status = read_temp()
+            deg_f, status = read_temp()
 
             # overlay text onto camera
-            if not args.test:
-                with open(dir + 'user_annotate.txt', 'w') as f:
-                    f.write('celcius {0:.2f}  fahrenheit {1:.2f}  {2}'.format(deg_c, deg_f, status+hb))
+            with open(dir + 'user_annotate.txt', 'w') as f:
+                f.write('celcius {0:.2f}  fahrenheit {1:.2f}  {2}'.format(deg_c, deg_f, status+hb))
                 f.closed
-
-            # start or stop light/bubbles
-            timestamp = dt.datetime.now().time()
-            if start <= timestamp <= end:
-                relay1_on()
-            else:
-                relay1_off()
 
         except KeyboardInterrupt:
             print('\n\nKeyboard exception. Exiting.\n')
