@@ -150,7 +150,7 @@ def prowl(event, description, pri=None):
 # update ISY vars
 
 def load_status():
-        with open('status.json') as data_file:
+        with open('state/status.json') as data_file:
                 data = json.load(data_file)
         return data
 
@@ -229,7 +229,7 @@ def main():
     data=load_status()
     hb = "*"
     if args.test:
-        pprint()
+        pprint(data)
         return
 
     while True:
