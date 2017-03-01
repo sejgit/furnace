@@ -22,6 +22,7 @@ import paul
 import argparse
 from Adafruit_IO import Client
 import json
+import response
 
 # parsing
 parser = argparse.ArgumentParser(description='Furnace control & data acquisition')
@@ -110,6 +111,22 @@ except IOError:
     logger.error("Could not read AIO key file")
 aio = Client(ADAFRUIT_IO_KEY)
 
+# ISY vars
+try:
+    isyip = "" # use http://10.0.1.x format
+    isylogin = ""
+    isypass = ""
+    with open(os.path.join(userdir, ".ssh/isy.auth"), "r") as f:
+            isyip  = f.readline()
+            isyip = isyip.rstrip()
+            isylogin  = f.readline()
+            isylogin = isylogin.rstrip()
+            isypass  = f.readline()
+            isypass = isypass.rstrip()
+            logger.info("ISY IP = '" + isyip + "'")
+except IOError:
+    logger.error("Could not read ISY auth file")
+
 
 
 ###
@@ -132,7 +149,7 @@ def prowl(event, description, pri=None):
 
             # prowl push to sej
             p.push(apikey1,
-                   fishlabel,
+                   args.name,
                    event,
                    description,
                    url=None,
@@ -152,6 +169,18 @@ def load_status():
         with open('state/status.json') as data_file:
                 data = json.load(data_file)
         return data
+
+
+def load_isy_vars():
+        try:
+                r.requests.get(isyip + '/rest/vars/get/1', auth=(isylogin, isypass))
+                if r.status_code <> requests.codes.ok:
+                        logger.error('isy request failed')
+                isy = untangle.parse(r.text)
+        except:
+                logger.error('isy request exception')
+        return isy
+
 
 
 def read_temp():
