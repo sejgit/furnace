@@ -22,7 +22,8 @@ import paul
 import argparse
 from Adafruit_IO import Client
 import json
-import response
+import requests
+import xmltodict
 
 # parsing
 parser = argparse.ArgumentParser(description='Furnace control & data acquisition')
@@ -33,6 +34,13 @@ parser.add_argument('-n', '--name', default='Furnace',
                     help='name label for output like prowl')
 parser.add_argument('-s', '--stream', default='furnacemode',
                     help='stream name for AIO')
+parser.add_argument('-i', '--index', default=0, type=int,
+                    help='furnace index number for ISY vars')
+parser.add_argument('-l', '--lower', default=50, type=int,
+                    help='lower temperature alarm')
+parser.add_argument('-u', '--upper', default=90, type=int,
+                    help='upper temperature alarm')
+
 args = parser.parse_args()
 
 if args.dir:
@@ -124,6 +132,8 @@ try:
             isypass  = f.readline()
             isypass = isypass.rstrip()
             logger.info("ISY IP = '" + isyip + "'")
+            if args.test:
+                    print(isyip, isylogin, isypass)
 except IOError:
     logger.error("Could not read ISY auth file")
 
@@ -168,18 +178,52 @@ def prowl(event, description, pri=None):
 def load_status():
         with open('state/status.json') as data_file:
                 data = json.load(data_file)
+                if args.test:
+                        print(data)
         return data
-
 
 def load_isy_vars():
         try:
-                r.requests.get(isyip + '/rest/vars/get/1', auth=(isylogin, isypass))
-                if r.status_code <> requests.codes.ok:
-                        logger.error('isy request failed')
-                isy = untangle.parse(r.text)
+                r=requests.get(isyip + '/rest/vars/get/1', auth=(isylogin, isypass))
+                if r.status_code != requests.codes.ok:
+                        logger.error('isy request failed error code ='+str(r.status_code))
+                isy = xmltodict.parse(r.text)
+                if args.test:
+                        print('isy request code ='+str(r.status_code))
+                        print(isy)
         except:
                 logger.error('isy request exception')
+                return 'fail'
         return isy
+
+def change(data, isy):
+        """ # ISY key for vars:
+        fnorth, fsouth  index = id - 1
+        index=0,1 id=1,2  vacatrunning
+        index=2,3 id=3,4  hold
+        index=4,5 id=5,6  currentActivity
+        index=6,7 id=7,8  rt=temp
+        index=8,9 id=9,10 rh=relHumidity """
+
+        f_vacatrunning=data['status'][0]['vacatrunning']
+        f_hold=data['status'][0]['zones'][0]['zone'][0]['hold']
+        f_currentActivity=data['status'][0]['zones'][0]['zone'][0]['currentActivity']
+        f_rt=data['status'][0]['zones'][0]['zone'][0]['rt']
+        f_rh=data['status'][0]['zones'][0]['zone'][0]['rh']
+
+        i_vacatrunning=isy['vars']['var'][args.index]['val']
+        i_hold=isy['vars']['var'][args.index+2]['val']
+        i_currentActivity=isy['vars']['var'][args.index+4]['val']
+        i_rt=isy['vars']['var'][args.index+6]['val']
+        i_rh=isy['vars']['var'][args.index+8]['val']
+
+        print(f_vacatrunning, i_vacatrunning)
+        print(f_hold, i_hold)
+        print(f_currentActivity, i_currentActivity)
+        print(f_rt, i_rt)
+        print(f_rh, i_rh)
+
+        return True
 
 
 
@@ -251,22 +295,23 @@ def main():
     logger.info('nowtime ='+ str(timestamp)[:5])
 
     # log & push status on first run
-    #dailylog()
-
-    data=load_status()
     hb = "*"
+    data=load_status()
+    isy=load_isy_vars()
+    #dailylog(data, isy)
+    if change(data, isy):
+            update_isy_vars(data, isy)
+
+
+
     if args.test:
         json.dumps(data, sort_keys=True, indent=2)
+        print(isy)
         vacatrunning=data['status'][0]['vacatrunning']
         currentActivity=data['status'][0]['zones'][0]['zone'][0]['currentActivity']
         rt=data['status'][0]['zones'][0]['zone'][0]['rt']
         rh=data['status'][0]['zones'][0]['zone'][0]['rh']
         hold=data['status'][0]['zones'][0]['zone'][0]['hold']
-        print(vacatrunning)
-        print(currentActivity)
-        print(rt)
-        print(rh)
-        print(hold)
         return
 
     while True:
