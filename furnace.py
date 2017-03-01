@@ -22,7 +22,6 @@ import paul
 import argparse
 from Adafruit_IO import Client
 import json
-from pprint import pprint
 
 # parsing
 parser = argparse.ArgumentParser(description='Furnace control & data acquisition')
@@ -104,9 +103,9 @@ try:
             ADAFRUIT_IO_USERNAME = ADAFRUIT_IO_USERNAME.rstrip()
             ADAFRUIT_IO_KEY = f.readline()
             ADAFRUIT_IO_KEY = ADAFRUIT_IO_KEY.rstrip()
-            print("'" + ADAFRUIT_IO_USERNAME + "'")
-            print("'" + ADAFRUIT_IO_KEY + "'")
-            print("'" + args.stream + "'")
+            #print("'" + ADAFRUIT_IO_USERNAME + "'")
+            #print("'" + ADAFRUIT_IO_KEY + "'")
+            logger.info("AIO stream = '" + args.stream + "'")
 except IOError:
     logger.error("Could not read AIO key file")
 aio = Client(ADAFRUIT_IO_KEY)
@@ -153,7 +152,6 @@ def load_status():
         with open('state/status.json') as data_file:
                 data = json.load(data_file)
         return data
-
 
 
 def read_temp():
@@ -229,7 +227,17 @@ def main():
     data=load_status()
     hb = "*"
     if args.test:
-        pprint(data)
+        json.dumps(data, sort_keys=True, indent=2)
+        vacatrunning=data['status'][0]['vacatrunning']
+        currentActivity=data['status'][0]['zones'][0]['zone'][0]['currentActivity']
+        rt=data['status'][0]['zones'][0]['zone'][0]['rt']
+        rh=data['status'][0]['zones'][0]['zone'][0]['rh']
+        hold=data['status'][0]['zones'][0]['zone'][0]['hold']
+        print(vacatrunning)
+        print(currentActivity)
+        print(rt)
+        print(rh)
+        print(hold)
         return
 
     while True:
