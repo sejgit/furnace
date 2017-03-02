@@ -137,7 +137,17 @@ try:
 except IOError:
     logger.error("Could not read ISY auth file")
 
-
+transOnOff = {
+        'on': 1,
+        'off': 0
+}
+transActivity = {
+        'none': 0,
+        'wake': 1,
+        'away': 2,
+        'home': 3,
+        'sleep': 4
+}
 
 ###
 ### defined functions
@@ -178,8 +188,6 @@ def prowl(event, description, pri=None):
 def load_status():
         with open('state/status.json') as data_file:
                 data = json.load(data_file)
-                if args.test:
-                        print(data)
         return data
 
 def load_isy_vars():
@@ -188,9 +196,6 @@ def load_isy_vars():
                 if r.status_code != requests.codes.ok:
                         logger.error('isy request failed error code ='+str(r.status_code))
                 isy = xmltodict.parse(r.text)
-                if args.test:
-                        print('isy request code ='+str(r.status_code))
-                        print(isy)
         except:
                 logger.error('isy request exception')
                 return 'fail'
@@ -205,11 +210,26 @@ def change(data, isy):
         index=6,7 id=7,8  rt=temp
         index=8,9 id=9,10 rh=relHumidity """
 
-        f_vacatrunning=data['status'][0]['vacatrunning']
-        f_hold=data['status'][0]['zones'][0]['zone'][0]['hold']
-        f_currentActivity=data['status'][0]['zones'][0]['zone'][0]['currentActivity']
-        f_rt=data['status'][0]['zones'][0]['zone'][0]['rt']
-        f_rh=data['status'][0]['zones'][0]['zone'][0]['rh']
+        f=[0,0,0,0,0]
+        f[0]=data['status'][0]['vacatrunning'][0]
+        f[1]=data['status'][0]['zones'][0]['zone'][0]['hold'][0]
+        f[2]=data['status'][0]['zones'][0]['zone'][0]['currentActivity'][0]
+        f[3]=data['status'][0]['zones'][0]['zone'][0]['rt'][0]
+        f[4]=data['status'][0]['zones'][0]['zone'][0]['rh'][0]
+
+        i=[0,0,0,0,0]
+        i[0]=isy['vars']['var'][args.index]['val']
+        i[1]=isy['vars']['var'][args.index+2]['val']
+        i[2]=isy['vars']['var'][args.index+4]['val']
+        i[3]=isy['vars']['var'][args.index+6]['val']
+        i[4]=isy['vars']['var'][args.index+8]['val']
+
+
+        f_vacatrunning=data['status'][0]['vacatrunning'][0]
+        f_hold=data['status'][0]['zones'][0]['zone'][0]['hold'][0]
+        f_currentActivity=data['status'][0]['zones'][0]['zone'][0]['currentActivity'][0]
+        f_rt=data['status'][0]['zones'][0]['zone'][0]['rt'][0]
+        f_rh=data['status'][0]['zones'][0]['zone'][0]['rh'][0]
 
         i_vacatrunning=isy['vars']['var'][args.index]['val']
         i_hold=isy['vars']['var'][args.index+2]['val']
@@ -217,14 +237,34 @@ def change(data, isy):
         i_rt=isy['vars']['var'][args.index+6]['val']
         i_rh=isy['vars']['var'][args.index+8]['val']
 
-        print(f_vacatrunning, i_vacatrunning)
-        print(f_hold, i_hold)
-        print(f_currentActivity, i_currentActivity)
-        print(f_rt, i_rt)
-        print(f_rh, i_rh)
+        if args.test:
+                print('vars')
+                print(f_vacatrunning, i_vacatrunning)
+                print(f_hold, i_hold)
+                print(f_currentActivity, i_currentActivity)
+                print(f_rt, i_rt)
+                print(f_rh, i_rh)
+                print('index')
+                for n in f:
+                        print(f[n], i[n])
 
-        return True
+        if ((transOnOff[f_vacatrunning] == i_vacatrunning) and
+            (transOnOff[f_hold] == i_hold) and
+            (transActivity[f_currentActivity] == i_currentActivity)):
+                changemode = False
+        else:
+                changemode = True
 
+        if ((transOnOff[f_vacatrunning] == i_vacatrunning) and
+            (transOnOff[f_hold] == i_hold) and
+            (transActivity[f_currentActivity] == i_currentActivity) and
+            (float(f_rt) == i_rt) and
+            (float(f_rh) == i_rh)):
+                changeany = False # no change has happened
+        else:
+                changeany = True # change has happened
+
+        return changeany, changemode
 
 
 def read_temp():
@@ -299,19 +339,14 @@ def main():
     data=load_status()
     isy=load_isy_vars()
     #dailylog(data, isy)
-    if change(data, isy):
-            update_isy_vars(data, isy)
-
-
+    changeany, changemode = change(data, isy)
+    if changeany:
+            update_isy(data, isy)
+    if changemode:
+            pass
+            # send to prowl if mode change
 
     if args.test:
-        json.dumps(data, sort_keys=True, indent=2)
-        print(isy)
-        vacatrunning=data['status'][0]['vacatrunning']
-        currentActivity=data['status'][0]['zones'][0]['zone'][0]['currentActivity']
-        rt=data['status'][0]['zones'][0]['zone'][0]['rt']
-        rh=data['status'][0]['zones'][0]['zone'][0]['rh']
-        hold=data['status'][0]['zones'][0]['zone'][0]['hold']
         return
 
     while True:
