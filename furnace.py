@@ -11,7 +11,6 @@
 
 ### imports
 import datetime as dt
-import schedule
 import time
 import logging
 import logging.handlers
@@ -32,7 +31,7 @@ parser.add_argument('-t', '--test', action='store_true',
 parser.add_argument('-d', '--dir', help='home directory')
 parser.add_argument('-n', '--name', default='Furnace',
                     help='name label for output like prowl')
-parser.add_argument('-s', '--stream', default='furnacemode',
+parser.add_argument('-s', '--stream', default='furnace',
                     help='stream name for AIO')
 parser.add_argument('-i', '--index', default=0, type=int,
                     help='furnace index number for ISY vars')
@@ -219,7 +218,6 @@ def change(data, isy):
         i[3]=isy['vars']['var'][args.index+6]['val']
         i[4]=isy['vars']['var'][args.index+8]['val']
 
-
         if args.test:
                 print('index')
                 for fnum, inum in zip(f, i):
@@ -232,11 +230,11 @@ def change(data, isy):
         c[3] = not (float(f[3]) == i[3])
         c[4] = not (float(f[4]) == i[4])
 
-
         changemode = True
         changeany = True
         if (not (c[0] or c[1] or c[2])):
                 changemode = False
+                logger.info(f + i + c)
         if (not (c[0] or c[1] or c[2] or c[3] or c[4])):
                 changeany = False # no change has happened
 
@@ -253,47 +251,41 @@ def update_isy(f, i, c):
 
 def update_prowl_mode(f, i, c):
         event = 'mode change'
-        description = ''
-        logger.info()
+        description = 'currAct:'+ f[2] + ' hold:' + f[1] + ' vac:' +f[0]
+        logger.info(event + ": " + description)
         if args.test:
                 print('update_prowl')
         else:
-                prowl('change')
+                prowl(event, description)
         return
 
 
-def check_temp():
-
-        if temp_f > temp_f_hi:
+def check_temp(temp):
+        if temp > args.upper:
             status = 'hi'
-        elif temp_f < temp_f_lo:
+        elif temp < args.lower:
             status = 'lo'
         else:
             status = 'ok'
-        return temp_f, status
+        return status
 
-# push temp status to prowl
-def pushtempstatus():
-    if "status_old" not in pushtempstatus.__dict__: pushtempstatus.status_old = 'first run'
-    deg_f, status = check_temp()
-    if status != pushtempstatus.status_old:
-        prowl('temperature ', (" *** " + status + " " + str(deg_f) + ' ***'), ((status == 'ok') * -2))
-        pushtempstatus.status_old = status
+
+def prowl_temp(f, i, c, force):
+    if "status_old" not in prowl_temp.__dict__:
+            prowl_temp.status_old = 'first run'
+    status = check_temp(f[3])
+
+    if status != prowltemp.status_old or force:
+        prowl('temp ', (" *** " + status + " " + str(f[3]) + ' ***  rh ' + str(f[4])),
+              ((status == 'ok') * -2))
+        prowl_temp.status_old = status
     return
 
-# writing of temps
-def templog():
-    deg_f, status = check_temp()
-    templogger.info('{1}, {0:f}'.format(deg_f, status))
-    aio.send(args.stream, deg_f)
-    return
-
-def dailylog():
-    deg_c, deg_f, status = check_temp()
-    logger.info('celcius {0:.2f}  fahrenheit {1:.2f}  {2}'.format(deg_c, deg_f, status))
-    templogger.info('{2}, {0:.2f}, {1:.2f}'.format(deg_c, deg_f, status))
-    aio.send(args.stream, deg_f)
-    return
+def aioUpdate(i):
+        aio.send(args.stream+str(args.index)+'.activity')
+        aio.send(args.stream+str(args.index)+'.temp', i[3])
+        aio.send(args.stream+str(args.index)+'.rh', i[4])
+        return
 
 
 # heartbeat function
@@ -303,21 +295,6 @@ def heartbeat(ast):
     else:
         ast = " "
     return ast
-
-
-###
-### first run items
-###
-
-def scheduling():
-    # set scheduled events
-    # schedule.every().day.at(start_str).do(relay1_on)  # light/bubbler ON in morning
-    # schedule.every().day.at(end_str).do(relay1_off)   # light/bubler OFF at night
-    # schedule.every(10).minutes.do(templog)    # log temp to templogger
-    # schedule.every().day.do(dailylog)    # daily log temp to logger & temp logger
-    # schedule.every(15).minutes.do(pushtempstatus) # push temperature status to prowl
-    logger.info('scheduling set')
-    return
 
 
 ###
@@ -337,6 +314,7 @@ def main():
     dailylog(data, isy, f, i, c)
     if changeany:
             update_isy(f, i, c)
+            aioUpdate(i)
     update_prowl_mode(f, i, c)
     prowl_temp(f, i, c, True)
 
@@ -354,6 +332,7 @@ def main():
             changeany, changemode, f, i, c = change(data, isy)
             if changeany:
                     update_isy(f, i, c)
+                    aioUpdate(i)
             if changemode:
                     update_prowl_mode(f, i, c)
             prowl_temp(f, i, c, False)
