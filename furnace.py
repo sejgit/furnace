@@ -179,11 +179,6 @@ def prowl(event, description, pri=None):
             logger.error('prowl error')
         return
 
-# load JSON file
-# process JSON file
-# get temp
-# get activity
-# update ISY vars
 
 def load_status():
         with open('state/status.json') as data_file:
@@ -210,14 +205,14 @@ def change(data, isy):
         index=6,7 id=7,8  rt=temp
         index=8,9 id=9,10 rh=relHumidity """
 
-        f=[0,0,0,0,0]
+        f=['vacatrunning','hold','currentActivity','rt', 'rh']
         f[0]=data['status'][0]['vacatrunning'][0]
         f[1]=data['status'][0]['zones'][0]['zone'][0]['hold'][0]
         f[2]=data['status'][0]['zones'][0]['zone'][0]['currentActivity'][0]
         f[3]=data['status'][0]['zones'][0]['zone'][0]['rt'][0]
         f[4]=data['status'][0]['zones'][0]['zone'][0]['rh'][0]
 
-        i=[0,0,0,0,0]
+        i=['vacatrunning','hold','currentActivity','rt', 'rh']
         i[0]=isy['vars']['var'][args.index]['val']
         i[1]=isy['vars']['var'][args.index+2]['val']
         i[2]=isy['vars']['var'][args.index+4]['val']
@@ -225,49 +220,49 @@ def change(data, isy):
         i[4]=isy['vars']['var'][args.index+8]['val']
 
 
-        f_vacatrunning=data['status'][0]['vacatrunning'][0]
-        f_hold=data['status'][0]['zones'][0]['zone'][0]['hold'][0]
-        f_currentActivity=data['status'][0]['zones'][0]['zone'][0]['currentActivity'][0]
-        f_rt=data['status'][0]['zones'][0]['zone'][0]['rt'][0]
-        f_rh=data['status'][0]['zones'][0]['zone'][0]['rh'][0]
-
-        i_vacatrunning=isy['vars']['var'][args.index]['val']
-        i_hold=isy['vars']['var'][args.index+2]['val']
-        i_currentActivity=isy['vars']['var'][args.index+4]['val']
-        i_rt=isy['vars']['var'][args.index+6]['val']
-        i_rh=isy['vars']['var'][args.index+8]['val']
-
         if args.test:
-                print('vars')
-                print(f_vacatrunning, i_vacatrunning)
-                print(f_hold, i_hold)
-                print(f_currentActivity, i_currentActivity)
-                print(f_rt, i_rt)
-                print(f_rh, i_rh)
                 print('index')
-                for n in f:
-                        print(f[n], i[n])
+                for fnum, inum in zip(f, i):
+                        print(fnum, inum)
 
-        if ((transOnOff[f_vacatrunning] == i_vacatrunning) and
-            (transOnOff[f_hold] == i_hold) and
-            (transActivity[f_currentActivity] == i_currentActivity)):
+        c=[True, True, True, True, True]
+        c[0] = not (transOnOff[f[0]] == i[0])
+        c[1] = not (transOnOff[f[1]] == i[1])
+        c[2] = not (transActivity[f[2]] == i[2])
+        c[3] = not (float(f[3]) == i[3])
+        c[4] = not (float(f[4]) == i[4])
+
+
+        changemode = True
+        changeany = True
+        if (not (c[0] or c[1] or c[2])):
                 changemode = False
-        else:
-                changemode = True
-
-        if ((transOnOff[f_vacatrunning] == i_vacatrunning) and
-            (transOnOff[f_hold] == i_hold) and
-            (transActivity[f_currentActivity] == i_currentActivity) and
-            (float(f_rt) == i_rt) and
-            (float(f_rh) == i_rh)):
+        if (not (c[0] or c[1] or c[2] or c[3] or c[4])):
                 changeany = False # no change has happened
+
+        return changeany, changemode, f, i, c
+
+
+def update_isy(f, i, c):
+        if args.test:
+                print('update_isy')
         else:
-                changeany = True # change has happened
+                pass
+        return
 
-        return changeany, changemode
+
+def update_prowl_mode(f, i, c):
+        event = 'mode change'
+        description = ''
+        logger.info()
+        if args.test:
+                print('update_prowl')
+        else:
+                prowl('change')
+        return
 
 
-def read_temp():
+def check_temp():
 
         if temp_f > temp_f_hi:
             status = 'hi'
@@ -280,7 +275,7 @@ def read_temp():
 # push temp status to prowl
 def pushtempstatus():
     if "status_old" not in pushtempstatus.__dict__: pushtempstatus.status_old = 'first run'
-    deg_f, status = read_temp()
+    deg_f, status = check_temp()
     if status != pushtempstatus.status_old:
         prowl('temperature ', (" *** " + status + " " + str(deg_f) + ' ***'), ((status == 'ok') * -2))
         pushtempstatus.status_old = status
@@ -288,13 +283,13 @@ def pushtempstatus():
 
 # writing of temps
 def templog():
-    deg_f, status = read_temp()
+    deg_f, status = check_temp()
     templogger.info('{1}, {0:f}'.format(deg_f, status))
     aio.send(args.stream, deg_f)
     return
 
 def dailylog():
-    deg_c, deg_f, status = read_temp()
+    deg_c, deg_f, status = check_temp()
     logger.info('celcius {0:.2f}  fahrenheit {1:.2f}  {2}'.format(deg_c, deg_f, status))
     templogger.info('{2}, {0:.2f}, {1:.2f}'.format(deg_c, deg_f, status))
     aio.send(args.stream, deg_f)
@@ -338,13 +333,12 @@ def main():
     hb = "*"
     data=load_status()
     isy=load_isy_vars()
-    #dailylog(data, isy)
-    changeany, changemode = change(data, isy)
+    changeany, changemode, f, i, c = change(data, isy)
+    dailylog(data, isy, f, i, c)
     if changeany:
-            update_isy(data, isy)
-    if changemode:
-            pass
-            # send to prowl if mode change
+            update_isy(f, i, c)
+    update_prowl_mode(f, i, c)
+    prowl_temp(f, i, c, True)
 
     if args.test:
         return
@@ -355,11 +349,15 @@ def main():
             time.sleep(60) # wait one minute
             hb = heartbeat(hb)
             deg_f, status = read_temp()
+            data=load_status()
+            isy=load_isy_vars()
+            changeany, changemode, f, i, c = change(data, isy)
+            if changeany:
+                    update_isy(f, i, c)
+            if changemode:
+                    update_prowl_mode(f, i, c)
+            prowl_temp(f, i, c, False)
 
-            # overlay text onto camera
-            with open(dir + 'user_annotate.txt', 'w') as f:
-                f.write('celcius {0:.2f}  fahrenheit {1:.2f}  {2}'.format(deg_c, deg_f, status+hb))
-                f.closed
 
         except KeyboardInterrupt:
             print('\n\nKeyboard exception. Exiting.\n')
