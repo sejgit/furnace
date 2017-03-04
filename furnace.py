@@ -111,8 +111,8 @@ try:
             ADAFRUIT_IO_USERNAME = ADAFRUIT_IO_USERNAME.rstrip()
             ADAFRUIT_IO_KEY = f.readline()
             ADAFRUIT_IO_KEY = ADAFRUIT_IO_KEY.rstrip()
-            #print("'" + ADAFRUIT_IO_USERNAME + "'")
-            #print("'" + ADAFRUIT_IO_KEY + "'")
+            print("'" + ADAFRUIT_IO_USERNAME + "'")
+            print("'" + ADAFRUIT_IO_KEY + "'")
             logger.info("AIO stream = '" + args.stream + "'")
 except IOError:
     logger.error("Could not read AIO key file")
@@ -188,8 +188,9 @@ def load_isy_vars():
         try:
                 r=requests.get(isyip + '/rest/vars/get/1', auth=(isylogin, isypass))
                 if r.status_code != requests.codes.ok:
-                        logger.error('isy request failed error code ='+str(r.status_code))
+                        logger.error('isy request error ='+str(r.status_code))
                 isy = xmltodict.parse(r.text)
+                print(isy)
         except:
                 logger.error('isy request exception')
                 return 'fail'
@@ -243,9 +244,62 @@ def change(data, isy):
 
 def update_isy(f, i, c):
         if args.test:
-                print('update_isy')
+            print('test mode no isy update')
         else:
-                pass
+            x=0
+            if c[x]:
+                try: # vacatrunning
+                    r=requests.get(isyip + '/rest/vars/set/1/'
+                                  +str((x*2)+args.index)+'/'+transOnOff[f[x]],
+                                       auth=(isylogin, isypass))
+                    if r.status_code != requests.codes.ok:
+                            logger.error('isy update vac error ='+str(r.status_code))
+                except:
+                    logger.error('isy update vacatrunning exception')
+            x=1
+            if c[x]:
+                try: # hold
+                    r=requests.get(isyip + '/rest/vars/set/1/'
+                                  +str((x*2)+args.index)+'/'+transOnOff[f[x]],
+                                       auth=(isylogin, isypass))
+                    if r.status_code != requests.codes.ok:
+                            logger.error('isy update hold error ='+str(r.status_code))
+                except:
+                    logger.error('isy update hold exception')
+            x=2
+            if c[x]:
+                try: # currentActivity
+                    r=requests.get(isyip + '/rest/vars/set/1/'
+                                  +str((x*2)+args.index)+'/'+transActivity[f[x]],
+                                       auth=(isylogin, isypass))
+                    if r.status_code != requests.codes.ok:
+                            logger.error('isy update activity error ='
+                                         +str(r.status_code))
+                except:
+                    logger.error('isy update activity exception')
+            x=3
+            if c[x]:
+                try: # temp
+                    r=requests.get(isyip + '/rest/vars/set/1/'
+                                  +str((x*2)+args.index)+'/'+float(f[x]),
+                                       auth=(isylogin, isypass))
+                    if r.status_code != requests.codes.ok:
+                            logger.error('isy update temp error ='
+                                         +str(r.status_code))
+                except:
+                    logger.error('isy update temperature exception')
+            x=4
+            if c[x]:
+                try: # temp
+                    r=requests.get(isyip + '/rest/vars/set/1/'
+                                  +str((x*2)+args.index)+'/'+float(f[x]),
+                                       auth=(isylogin, isypass))
+                    if r.status_code != requests.codes.ok:
+                            logger.error('isy update rh error ='
+                                         +str(r.status_code))
+                except:
+                    logger.error('isy update rh exception')
+
         return
 
 
@@ -273,18 +327,28 @@ def check_temp(temp):
 def prowl_temp(f, i, c, force):
     if "status_old" not in prowl_temp.__dict__:
             prowl_temp.status_old = 'first run'
-    status = check_temp(f[3])
+    status = check_temp(float(f[3]))
 
-    if status != prowltemp.status_old or force:
+    if status != prowl_temp.status_old or force and (not args.test):
         prowl('temp ', (" *** " + status + " " + str(f[3]) + ' ***  rh ' + str(f[4])),
               ((status == 'ok') * -2))
         prowl_temp.status_old = status
     return
 
-def aioUpdate(i):
-        aio.send(args.stream+str(args.index)+'.activity')
-        aio.send(args.stream+str(args.index)+'.temp', i[3])
-        aio.send(args.stream+str(args.index)+'.rh', i[4])
+def aioUpdate(f):
+        try:
+                activity = args.stream+str(args.index)+'activity'
+                temp = args.stream+str(args.index)+'temp'
+                rh = args.stream+str(args.index)+'rh'
+                aio.send(activity, transActivity[f[2]])
+                aio.send(temp, float(f[3]))
+                aio.send(rh, float(f[4]))
+        except:
+                logger.error('AIO request error')
+                logger.error(activity)
+                logger.error(temp)
+                logger.error(rh)
+
         return
 
 
@@ -302,7 +366,6 @@ def heartbeat(ast):
 ###
 
 def main():
-    scheduling()
     timestamp = dt.datetime.now().time()
     logger.info('nowtime ='+ str(timestamp)[:5])
 
@@ -311,10 +374,9 @@ def main():
     data=load_status()
     isy=load_isy_vars()
     changeany, changemode, f, i, c = change(data, isy)
-    dailylog(data, isy, f, i, c)
     if changeany:
             update_isy(f, i, c)
-            aioUpdate(i)
+            aioUpdate(f)
     update_prowl_mode(f, i, c)
     prowl_temp(f, i, c, True)
 
@@ -322,17 +384,15 @@ def main():
         return
 
     while True:
-        schedule.run_pending()
         try:
             time.sleep(60) # wait one minute
             hb = heartbeat(hb)
-            deg_f, status = read_temp()
             data=load_status()
             isy=load_isy_vars()
             changeany, changemode, f, i, c = change(data, isy)
             if changeany:
                     update_isy(f, i, c)
-                    aioUpdate(i)
+                    aioUpdate(f)
             if changemode:
                     update_prowl_mode(f, i, c)
             prowl_temp(f, i, c, False)
