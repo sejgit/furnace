@@ -211,7 +211,7 @@ def change(data, isy):
         f[4]=data['status'][0]['zones'][0]['zone'][0]['rh'][0]
 
         i=['vacatrunning','hold','currentActivity','rt', 'rh']
-        i[0]=int(isy['vars']['var'][args.index]['val'])
+        i[0]=int(isy['vars']['var'][args.index+0]['val'])
         i[1]=int(isy['vars']['var'][args.index+2]['val'])
         i[2]=int(isy['vars']['var'][args.index+4]['val'])
         i[3]=int(isy['vars']['var'][args.index+6]['val'])
