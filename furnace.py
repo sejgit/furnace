@@ -292,18 +292,20 @@ def update_isy(f, i, c):
                                          +str(r.status_code))
                 except:
                     logger.error('isy update rh exception')
-
         return
 
 
 def update_prowl_mode(f, i, c):
-        event = 'mode change'
+        if "status_old" not in update_prowl_mode.__dict__:
+            update_prowl_mode.status_old = 'first run'
+        else:
+                update_prowl_mode.status_old = 'mode change'
         description = 'currAct:'+ f[2] + ' hold:' + f[1] + ' vac:' +f[0]
-        logger.info(event + ": " + description)
+        logger.info(update_prowl_mode.status_old + ": " + description)
         if args.test:
                 print('update_prowl')
         else:
-                prowl(event, description)
+                prowl(update_prowl_mode.status_old, description)
         return
 
 
@@ -322,7 +324,7 @@ def prowl_temp(f, i, c, force):
             prowl_temp.status_old = 'first run'
     status = check_temp(float(f[3]))
 
-    if status != prowl_temp.status_old or force and (not args.test):
+    if (status != prowl_temp.status_old or force) and (not args.test):
         prowl('temp ', (" *** " + status + " " + str(f[3]) + ' ***  rh ' + str(f[4])),
               ((status == 'ok') * -2))
         prowl_temp.status_old = status
