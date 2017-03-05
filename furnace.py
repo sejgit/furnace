@@ -42,8 +42,8 @@ parser.add_argument('-u', '--upper', default=90, type=int,
 
 args = parser.parse_args()
 
-#print("'" + str(args.index) + "'", type(args.index))
-#exit()
+args.index = int(args.index) #strange issue when running from crontab vs command
+
 
 if args.dir:
         dir = os.path.join(args.dir, '')
