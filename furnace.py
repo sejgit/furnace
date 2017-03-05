@@ -86,7 +86,6 @@ logger.info('using directory  ' + dir)
 logger.info('testing = ' + str(args.test))
 
 
-
 ###
 ### variables
 ###
@@ -111,8 +110,6 @@ try:
             ADAFRUIT_IO_USERNAME = ADAFRUIT_IO_USERNAME.rstrip()
             ADAFRUIT_IO_KEY = f.readline()
             ADAFRUIT_IO_KEY = ADAFRUIT_IO_KEY.rstrip()
-            print("'" + ADAFRUIT_IO_USERNAME + "'")
-            print("'" + ADAFRUIT_IO_KEY + "'")
             logger.info("AIO stream = '" + args.stream + "'")
 except IOError:
     logger.error("Could not read AIO key file")
@@ -131,8 +128,7 @@ try:
             isypass  = f.readline()
             isypass = isypass.rstrip()
             logger.info("ISY IP = '" + isyip + "'")
-            if args.test:
-                    print(isyip, isylogin, isypass)
+
 except IOError:
     logger.error("Could not read ISY auth file")
 
@@ -190,7 +186,6 @@ def load_isy_vars():
                 if r.status_code != requests.codes.ok:
                         logger.error('isy request error ='+str(r.status_code))
                 isy = xmltodict.parse(r.text)
-                print(isy)
         except:
                 logger.error('isy request exception')
                 return 'fail'
@@ -213,16 +208,11 @@ def change(data, isy):
         f[4]=data['status'][0]['zones'][0]['zone'][0]['rh'][0]
 
         i=['vacatrunning','hold','currentActivity','rt', 'rh']
-        i[0]=isy['vars']['var'][args.index]['val']
-        i[1]=isy['vars']['var'][args.index+2]['val']
-        i[2]=isy['vars']['var'][args.index+4]['val']
-        i[3]=isy['vars']['var'][args.index+6]['val']
-        i[4]=isy['vars']['var'][args.index+8]['val']
-
-        if args.test:
-                print('index')
-                for fnum, inum in zip(f, i):
-                        print(fnum, inum)
+        i[0]=int(isy['vars']['var'][args.index]['val'])
+        i[1]=int(isy['vars']['var'][args.index+2]['val'])
+        i[2]=int(isy['vars']['var'][args.index+4]['val'])
+        i[3]=int(isy['vars']['var'][args.index+6]['val'])
+        i[4]=int(isy['vars']['var'][args.index+8]['val'])
 
         c=[True, True, True, True, True]
         c[0] = not (transOnOff[f[0]] == i[0])
@@ -235,10 +225,15 @@ def change(data, isy):
         changeany = True
         if (not (c[0] or c[1] or c[2])):
                 changemode = False
-                logger.info(f + i + c)
+                logger.info('changemode=False')
+        else:
+                logger.info('changemode=True')
         if (not (c[0] or c[1] or c[2] or c[3] or c[4])):
                 changeany = False # no change has happened
-
+                logger.info('changeany=False')
+        else:
+                logger.info('changeany=True')
+        logger.info(f + i + c)
         return changeany, changemode, f, i, c
 
 
@@ -249,9 +244,8 @@ def update_isy(f, i, c):
             x=0
             if c[x]:
                 try: # vacatrunning
-                    r=requests.get(isyip + '/rest/vars/set/1/'
-                                  +str((x*2)+args.index)+'/'+transOnOff[f[x]],
-                                       auth=(isylogin, isypass))
+                    s=isyip+'/rest/vars/set/1/'+str((x*2)+args.index+1)+'/'+str(transOnOff[f[x]])
+                    r=requests.get(s, auth=(isylogin, isypass))
                     if r.status_code != requests.codes.ok:
                             logger.error('isy update vac error ='+str(r.status_code))
                 except:
@@ -260,7 +254,7 @@ def update_isy(f, i, c):
             if c[x]:
                 try: # hold
                     r=requests.get(isyip + '/rest/vars/set/1/'
-                                  +str((x*2)+args.index)+'/'+transOnOff[f[x]],
+                                  +str((x*2)+args.index+1)+'/'+str(transOnOff[f[x]]),
                                        auth=(isylogin, isypass))
                     if r.status_code != requests.codes.ok:
                             logger.error('isy update hold error ='+str(r.status_code))
@@ -270,7 +264,7 @@ def update_isy(f, i, c):
             if c[x]:
                 try: # currentActivity
                     r=requests.get(isyip + '/rest/vars/set/1/'
-                                  +str((x*2)+args.index)+'/'+transActivity[f[x]],
+                                  +str((x*2)+args.index+1)+'/'+str(transActivity[f[x]]),
                                        auth=(isylogin, isypass))
                     if r.status_code != requests.codes.ok:
                             logger.error('isy update activity error ='
@@ -280,9 +274,8 @@ def update_isy(f, i, c):
             x=3
             if c[x]:
                 try: # temp
-                    r=requests.get(isyip + '/rest/vars/set/1/'
-                                  +str((x*2)+args.index)+'/'+float(f[x]),
-                                       auth=(isylogin, isypass))
+                    s=isyip+'/rest/vars/set/1/'+str((x*2)+args.index+1)+'/'+str(int(float(f[x])))
+                    r=requests.get(s, auth=(isylogin, isypass))
                     if r.status_code != requests.codes.ok:
                             logger.error('isy update temp error ='
                                          +str(r.status_code))
@@ -290,9 +283,9 @@ def update_isy(f, i, c):
                     logger.error('isy update temperature exception')
             x=4
             if c[x]:
-                try: # temp
+                try: # rh
                     r=requests.get(isyip + '/rest/vars/set/1/'
-                                  +str((x*2)+args.index)+'/'+float(f[x]),
+                                  +str((x*2)+args.index+1)+'/'+str(int(float(f[x]))),
                                        auth=(isylogin, isypass))
                     if r.status_code != requests.codes.ok:
                             logger.error('isy update rh error ='
@@ -377,7 +370,8 @@ def main():
     if changeany:
             update_isy(f, i, c)
             aioUpdate(f)
-    update_prowl_mode(f, i, c)
+    if changemode:
+            update_prowl_mode(f, i, c)
     prowl_temp(f, i, c, True)
 
     if args.test:
