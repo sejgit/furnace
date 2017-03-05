@@ -42,6 +42,9 @@ parser.add_argument('-u', '--upper', default=90, type=int,
 
 args = parser.parse_args()
 
+#print("'" + str(args.index) + "'", type(args.index))
+#exit()
+
 if args.dir:
         dir = os.path.join(args.dir, '')
 else:
@@ -297,7 +300,7 @@ def update_isy(f, i, c):
 
 def update_prowl_mode(f, i, c):
         if "status_old" not in update_prowl_mode.__dict__:
-            update_prowl_mode.status_old = 'first run'
+                update_prowl_mode.status_old = 'first run'
         else:
                 update_prowl_mode.status_old = 'mode change'
         description = 'currAct:'+ f[2] + ' hold:' + f[1] + ' vac:' +f[0]
@@ -371,9 +374,8 @@ def main():
     changeany, changemode, f, i, c = change(data, isy)
     if changeany:
             update_isy(f, i, c)
-            aioUpdate(f)
-    if changemode:
-            update_prowl_mode(f, i, c)
+    aioUpdate(f)
+    update_prowl_mode(f, i, c)
     prowl_temp(f, i, c, True)
 
     if args.test:
