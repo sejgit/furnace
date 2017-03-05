@@ -179,8 +179,12 @@ def prowl(event, description, pri=None):
 
 
 def load_status():
-        with open(os.path.join(dir, 'state/status.json'), "r") as data_file:
+        try:
+            with open(os.path.join(dir, 'state/status.json'), "r") as data_file:
                 data = json.load(data_file)
+        except Exception as error:
+                logger.error('load data error ='+str(error))
+                return 'fail'
         return data
 
 def load_isy_vars():
@@ -188,6 +192,7 @@ def load_isy_vars():
                 r=requests.get(isyip + '/rest/vars/get/1', auth=(isylogin, isypass))
                 if r.status_code != requests.codes.ok:
                         logger.error('isy request error ='+str(r.status_code))
+                        raise
                 isy = xmltodict.parse(r.text)
         except:
                 logger.error('isy request exception')
@@ -210,7 +215,8 @@ def change(data, isy):
         f[3]=data['status'][0]['zones'][0]['zone'][0]['rt'][0]
         f[4]=data['status'][0]['zones'][0]['zone'][0]['rh'][0]
 
-        i=['vacatrunning','hold','currentActivity','rt', 'rh']
+        #i=['vacatrunning','hold','currentActivity','rt', 'rh']
+        i=[0,0,0,0,0]
         i[0]=int(isy['vars']['var'][args.index+0]['val'])
         i[1]=int(isy['vars']['var'][args.index+2]['val'])
         i[2]=int(isy['vars']['var'][args.index+4]['val'])
@@ -369,8 +375,14 @@ def main():
 
     # log & push status on first run
     hb = "*"
-    data=load_status()
-    isy=load_isy_vars()
+    while True:
+            data=load_status()
+            isy=load_isy_vars()
+            if data =='fail' or isy == 'fail':
+                    logger.error('repeat failure: load data or isy')
+                    sleep(60)
+            else:
+                    break
     changeany, changemode, f, i, c = change(data, isy)
     if changeany:
             update_isy(f, i, c)
@@ -385,8 +397,14 @@ def main():
         try:
             time.sleep(60) # wait one minute
             hb = heartbeat(hb)
-            data=load_status()
-            isy=load_isy_vars()
+            while True:
+                    data=load_status()
+                    isy=load_isy_vars()
+                    if data == 'fail' or isy == 'fail':
+                            logger.error('repeat failure: load data or isy')
+                            sleep(60)
+                    else:
+                            break
             changeany, changemode, f, i, c = change(data, isy)
             if changeany:
                     update_isy(f, i, c)
