@@ -176,7 +176,7 @@ def prowl(event, description, pri=None):
 
 
 def load_status():
-        with open('state/status.json') as data_file:
+        with open(os.path.join(userdir, 'state/status.json'), "r") as data_file:
                 data = json.load(data_file)
         return data
 
