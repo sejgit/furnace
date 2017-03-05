@@ -380,7 +380,7 @@ def main():
             isy=load_isy_vars()
             if data =='fail' or isy == 'fail':
                     logger.error('repeat failure: load data or isy')
-                    sleep(60)
+                    time.sleep(30)
             else:
                     break
     changeany, changemode, f, i, c = change(data, isy)
@@ -402,7 +402,7 @@ def main():
                     isy=load_isy_vars()
                     if data == 'fail' or isy == 'fail':
                             logger.error('repeat failure: load data or isy')
-                            sleep(60)
+                            time.sleep(30)
                     else:
                             break
             changeany, changemode, f, i, c = change(data, isy)
