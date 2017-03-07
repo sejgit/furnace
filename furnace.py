@@ -335,7 +335,7 @@ def update_prowl_mode(f, i, c, update):
                 print('update_prowl')
         else:
                 prowl(update_prowl_mode.status_old, description
-                      ,((update == 1) * -2))
+                      ,((update == 0) * -2))
         return
 
 
