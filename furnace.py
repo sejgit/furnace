@@ -197,16 +197,18 @@ def load_isy_vars():
                 isy = xmltodict.parse(r.text)
 
                 # get state value of updateFurnace (means change was ISY pushed)
-                r=requests.get(isyip + '/rest/vars/get/1/27'
+                r=requests.get(isyip + '/rest/vars/get/2/27'
                                ,auth=(isylogin, isypass))
                 if r.status_code != requests.codes.ok:
                         logger.error('isy state request error ='+str(r.status_code))
                         raise
-                update = int(xmltodict.parse(r.text))
+                x = xmltodict.parse(r.text)
+                update = int(x['var']['val'])
                 logger.info('updateFurnace '+ str(update == 1))
         except:
+                print('error')
                 logger.error('isy request exception')
-                return 'fail'
+                return 'fail', 0
         return isy, update
 
 def change(data, isy):
@@ -395,8 +397,8 @@ def main():
     # log & push status on first run
     hb = "*"
     while True:
-            data=load_status()
-            isy, update=load_isy_vars()
+            data = load_status()
+            isy, update = load_isy_vars()
             if data =='fail' or isy == 'fail':
                     logger.error('repeat failure: load data or isy')
                     time.sleep(30)
