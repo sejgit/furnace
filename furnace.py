@@ -3,7 +3,7 @@
 # communications between Infinity Thermostate, Infinitude Server, & ISY994i controller
 
 # 2017 02 27 SeJ init
-
+# 2017 03 07 add updateFurnace flog for powl prioritization
 
 ###
 ### imports and parse args
@@ -189,15 +189,25 @@ def load_status():
 
 def load_isy_vars():
         try:
+                # get integer variables
                 r=requests.get(isyip + '/rest/vars/get/1', auth=(isylogin, isypass))
                 if r.status_code != requests.codes.ok:
-                        logger.error('isy request error ='+str(r.status_code))
+                        logger.error('isy integer request error ='+str(r.status_code))
                         raise
                 isy = xmltodict.parse(r.text)
+
+                # get state value of updateFurnace (means change was ISY pushed)
+                r=requests.get(isyip + '/rest/vars/get/1/27'
+                               ,auth=(isylogin, isypass))
+                if r.status_code != requests.codes.ok:
+                        logger.error('isy state request error ='+str(r.status_code))
+                        raise
+                update = int(xmltodict.parse(r.text))
+                logger.info('updateFurnace '+ str(update == 1))
         except:
                 logger.error('isy request exception')
                 return 'fail'
-        return isy
+        return isy, update
 
 def change(data, isy):
         """ # ISY key for vars:
@@ -301,10 +311,18 @@ def update_isy(f, i, c):
                                          +str(r.status_code))
                 except:
                     logger.error('isy update rh exception')
+            try: # furnaceUpdate reset
+                r=requests.get(isyip + '/rest/vars/set/2/27/0'
+                               ,auth=(isylogin, isypass))
+                if r.status_code != requests.codes.ok:
+                        logger.error('isy update furnaceUpdate error ='
+                                     + str(r.status_code))
+            except:
+                    logger.error('isy update furnaceUpdate exception')
         return
 
 
-def update_prowl_mode(f, i, c):
+def update_prowl_mode(f, i, c, update):
         if "status_old" not in update_prowl_mode.__dict__:
                 update_prowl_mode.status_old = 'first run'
         else:
@@ -314,7 +332,8 @@ def update_prowl_mode(f, i, c):
         if args.test:
                 print('update_prowl')
         else:
-                prowl(update_prowl_mode.status_old, description)
+                prowl(update_prowl_mode.status_old, description
+                      ,((update == 1) * -2))
         return
 
 
@@ -377,7 +396,7 @@ def main():
     hb = "*"
     while True:
             data=load_status()
-            isy=load_isy_vars()
+            isy, update=load_isy_vars()
             if data =='fail' or isy == 'fail':
                     logger.error('repeat failure: load data or isy')
                     time.sleep(30)
@@ -387,7 +406,7 @@ def main():
     if changeany:
             update_isy(f, i, c)
     aioUpdate(f)
-    update_prowl_mode(f, i, c)
+    update_prowl_mode(f, i, c, update)
     prowl_temp(f, i, c, True)
 
     if args.test:
@@ -399,7 +418,7 @@ def main():
             hb = heartbeat(hb)
             while True:
                     data=load_status()
-                    isy=load_isy_vars()
+                    isy, update=load_isy_vars()
                     if data == 'fail' or isy == 'fail':
                             logger.error('repeat failure: load data or isy')
                             time.sleep(30)
@@ -410,7 +429,7 @@ def main():
                     update_isy(f, i, c)
                     aioUpdate(f)
             if changemode:
-                    update_prowl_mode(f, i, c)
+                    update_prowl_mode(f, i, c, update)
             prowl_temp(f, i, c, False)
 
 
