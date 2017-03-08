@@ -1,0 +1,6 @@
+#!/bin/bash
+# fsouth
+# 2017 03 07 SeJ init
+
+/home/pi/furnace/./furnace.py --dir /home/pi/furnace --name mainFurnace --index 0  > /home/pi/furnace/error0.log 2>&1
+
