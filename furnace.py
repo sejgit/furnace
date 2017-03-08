@@ -413,7 +413,7 @@ def main():
     if args.test:
             print('testing done')
             logger.info('testing done')
-        return
+            return
 
     while True:
         try:
