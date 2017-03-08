@@ -3,7 +3,9 @@
 # communications between Infinity Thermostate, Infinitude Server, & ISY994i controller
 
 # 2017 02 27 SeJ init
-# 2017 03 07 add updateFurnace flog for powl prioritization
+# 2017 03 07 add updateFurnace flag for powl prioritization
+# 2017 03 07 modify test to bypass isy & prowl writing
+
 
 ###
 ### imports and parse args
@@ -42,8 +44,6 @@ parser.add_argument('-u', '--upper', default=90, type=int,
 
 args = parser.parse_args()
 
-args.index = int(args.index) #strange issue when running from crontab vs command
-
 
 if args.dir:
         dir = os.path.join(args.dir, '')
@@ -63,7 +63,7 @@ userdir = os.path.expanduser("~")
 ###
 
 # set up a specific logger with desired output level
-LOG_FILENAME = dir + 'furnace.log'
+LOG_FILENAME = dir + 'furnace' + str(args.index) + '.log'
 
 logger = logging.getLogger('FurnaceLogger')
 
@@ -164,15 +164,16 @@ def prowl(event, description, pri=None):
                    url=args.url,
                    priority=args.priority)
             """
-
-            # prowl push to sej
-            p.push(apikey1,
-                   args.name,
-                   event,
-                   description,
-                   url=None,
-                   priority=pri)
-
+            if args.test:
+                    print('send prowl')
+            else:
+                    # prowl push to sej
+                    p.push(apikey1,
+                           args.name,
+                           event,
+                           description,
+                           url=None,
+                           priority=pri)
         except IOError:
             logger.error('prowl error')
         return
@@ -180,7 +181,8 @@ def prowl(event, description, pri=None):
 
 def load_status():
         try:
-            with open(os.path.join(dir, 'state/status.json'), "r") as data_file:
+            with open(os.path.join(dir, 'state' + str(args.index) + '/status.json')
+                      , "r") as data_file:
                 data = json.load(data_file)
         except Exception as error:
                 logger.error('load data error ='+str(error))
@@ -331,10 +333,7 @@ def update_prowl_mode(f, i, c, update):
                 update_prowl_mode.status_old = 'mode change'
         description = 'currAct:'+ f[2] + ' hold:' + f[1] + ' vac:' +f[0]
         logger.info(update_prowl_mode.status_old + ": " + description)
-        if args.test:
-                print('update_prowl')
-        else:
-                prowl(update_prowl_mode.status_old, description
+        prowl(update_prowl_mode.status_old, description
                       ,((update == 0) * -2))
         return
 
@@ -354,7 +353,7 @@ def prowl_temp(f, i, c, force):
             prowl_temp.status_old = 'first run'
     status = check_temp(float(f[3]))
 
-    if (status != prowl_temp.status_old or force) and (not args.test):
+    if (status != prowl_temp.status_old or force):
         prowl('temp ', (" *** " + status + " " + str(f[3]) + ' ***  rh ' + str(f[4])),
               ((status == 'ok') * -2))
         prowl_temp.status_old = status
@@ -412,6 +411,8 @@ def main():
     prowl_temp(f, i, c, True)
 
     if args.test:
+            print('testing done')
+            logger.info('testing done')
         return
 
     while True:
@@ -441,7 +442,7 @@ def main():
             exit()
 
         except:
-            logger.info('program end:', sys.exc_info()[0])
+            logger.info('program end:')
             exit()
     return
 
