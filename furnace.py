@@ -5,7 +5,7 @@
 # 2017 02 27 SeJ init
 # 2017 03 07 add updateFurnace flag for powl prioritization
 # 2017 03 07 modify test to bypass isy & prowl writing
-
+# 2017 03 10 update AIO every minute so can use server down service
 
 ###
 ### imports and parse args
@@ -54,8 +54,7 @@ if os.path.isdir(dir):
         print("\n" + dir + "   ***using directory***\n")
 else:
         print("\n" + dir + "   ***not a dir***\n")
-userdir = os.path.expanduser("~")
-
+userdir = os.path.expanduser("~pi")
 
 
 ###
@@ -87,6 +86,7 @@ logger.addHandler(fh)
 logger.info('***start program')
 logger.info('using directory  ' + dir)
 logger.info('testing = ' + str(args.test))
+logger.info('userpath='+userdir)
 
 
 ###
@@ -430,11 +430,10 @@ def main():
             changeany, changemode, f, i, c = change(data, isy)
             if changeany:
                     update_isy(f, i, c)
-                    aioUpdate(f)
             if changemode:
                     update_prowl_mode(f, i, c, update)
             prowl_temp(f, i, c, False)
-
+            aioUpdate(f)
 
         except KeyboardInterrupt:
             print('\n\nKeyboard exception. Exiting.\n')

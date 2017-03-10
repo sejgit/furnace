@@ -8,8 +8,10 @@ __pycache__/
 *~
 *.json
 state/
+*.log
 *.log.*
-
+*.out
+*.out.*
 
 # C extensions
 *.so
