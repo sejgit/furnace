@@ -1,0 +1,13 @@
+[Unit]
+Description=infinitude1 for 1southupper furnace service
+After=multi-user.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/pi/infinitude1
+ExecStart=/home/pi/infinitude1/infinitude daemon -l http://*:81
+Restart=always
+RestartSec=30
+
+[Install]
+WantedBy=multi-user.target

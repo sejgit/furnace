@@ -1,0 +1,13 @@
+[Unit]
+Description=infinitude0 for 0northmain furnace service
+After=multi-user.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/pi/infinitude0
+ExecStart=/home/pi/infinitude0/infinitude daemon -l http://*:80
+Restart=always
+RestartSec=30
+
+[Install]
+WantedBy=multi-user.target

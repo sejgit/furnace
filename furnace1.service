@@ -1,0 +1,13 @@
+[Unit]
+Description=furnace1uppersouth program service
+After=multi-user.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/pi/furnace
+ExecStart=/usr/bin/python3 /home/pi/furnace/furnace.py --dir /home/pi/furnace --name upperFurnace --index 1
+Restart=always
+RestartSec=30
+
+[Install]
+WantedBy=multi-user.target
