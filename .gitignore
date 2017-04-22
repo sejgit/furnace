@@ -12,6 +12,7 @@ state/
 *.log.*
 *.out
 *.out.*
+*.paul*
 
 # C extensions
 *.so
