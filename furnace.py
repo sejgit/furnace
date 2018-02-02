@@ -315,14 +315,23 @@ def update_isy(f, i, c):
                                          +str(r.status_code))
                 except:
                     logger.error('isy update rh exception')
-            try: # furnaceUpdate reset
+            try: # furnaceModeUpdate reset
                 r=requests.get(isyip + '/rest/vars/set/2/27/0'
                                ,auth=(isylogin, isypass))
                 if r.status_code != requests.codes.ok:
-                        logger.error('isy update furnaceUpdate error ='
+                        logger.error('isy update furnaceModeUpdate error ='
                                      + str(r.status_code))
             except:
-                    logger.error('isy update furnaceUpdate exception')
+                    logger.error('isy update furnaceModeUpdate exception')
+
+            try: # furnaceTempUpdate set
+                r=requests.get(isyip + '/rest/vars/set/2/37/1'
+                               ,auth=(isylogin, isypass))
+                if r.status_code != requests.codes.ok:
+                        logger.error('isy update furnaceTempUpdate error ='
+                                     + str(r.status_code))
+            except:
+                    logger.error('isy update furnaceTempUpdate exception')
         return
 
 
@@ -449,4 +458,3 @@ def main():
 if __name__== '__main__':
     main()
     exit()
-
