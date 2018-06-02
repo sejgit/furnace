@@ -6,7 +6,7 @@
 # 2017 03 07 add updateFurnace flag for powl prioritization
 # 2017 03 07 modify test to bypass isy & prowl writing
 # 2017 03 10 update AIO every minute so can use server down service
-
+# 2018 05 20 add heartbeat for isy
 ###
 ### imports and parse args
 ###
@@ -389,8 +389,16 @@ def aioUpdate(f):
 def heartbeat(ast):
     if ast==" ":
         ast = "*"
+        s=isyip+'/rest/vars/set/2/'+str(45+args.index)+'/1'
     else:
         ast = " "
+        s=isyip+'/rest/vars/set/2/'+str(45+args.index)+'/0'
+    try: # heartbeat
+        r=requests.get(s, auth=(isylogin, isypass))
+        if r.status_code != requests.codes.ok:
+                logger.error('isy heartbeat error =' + str(r.status_code))
+    except:
+           logger.error('isy heartbeat exception')
     return ast
 
 
