@@ -21,8 +21,8 @@ import logging.handlers
 import os
 import paul
 import argparse
-from Adafruit_IO import Client
-import json
+from Adafruit_IO import Client, AdafruitIOError
+# import json
 import requests
 import xmltodict
 
@@ -116,8 +116,8 @@ try:
     with open(os.path.join(userdir, ".ssh/.paul1"), "r") as f:
         apikey1 = f.read()
         apikey1 = apikey1.strip()
-except IOError:
-    logger.error("Could not read prowl api file")
+except IOError as e:
+    logger.error("Could not read prowl api file: {}".format(e))
 
 # AIO vars
 try:
@@ -129,8 +129,8 @@ try:
         ADAFRUIT_IO_KEY = f.readline()
         ADAFRUIT_IO_KEY = ADAFRUIT_IO_KEY.rstrip()
         logger.info("AIO stream = '" + args.stream + "'")
-except IOError:
-    logger.error("Could not read AIO key file")
+except IOError as e:
+    logger.error("Could not read AIO key file: {}".format(e))
 aio = Client(ADAFRUIT_IO_KEY)
 
 # ISY vars
@@ -147,8 +147,8 @@ try:
         isypass = isypass.rstrip()
         logger.info("ISY IP = '" + isyip + "'")
 
-except IOError:
-    logger.error("Could not read ISY auth file")
+except IOError as e:
+    logger.error("Could not read ISY auth file: {}".format(e))
 
 transOnOff = {'on': 1, 'off': 0}
 transActivity = {'none': 0, 'wake': 1, 'away': 2, 'home': 3, 'sleep': 4}
@@ -180,21 +180,12 @@ def prowl(event, description, pri=None):
                    description,
                    url=None,
                    priority=pri)
-    except IOError:
-        logger.error('prowl error')
+    except IOError as e:
+        logger.error('prowl error: {}'.format(e))
     return
 
 
 def load_status():
-    # try:
-    #     with open(
-    #             os.path.join(dir, 'state' + str(args.index) + '/status.json'),
-    #             "r") as data_file:
-    #         data = json.load(data_file)
-    # except Exception as error:
-    #     logger.error('load data error =' + str(error))
-    #     return 'fail'
-    # return data
     try:
         # get status
         data = requests.get('localhost:' + str(81 + args.index) +
@@ -202,10 +193,10 @@ def load_status():
         if data.status_code != requests.codes.ok:
             logger.error('infinitude request error =' + str(data.status_code))
             raise
-    except:
-        print('error')
-        logger.error('isy request exception')
-        return 'fail', 0
+    except requests.exceptions.RequestException as e:
+        print('error: {}'.format(e))
+        logger.error('isy request exception: {}'.format(e))
+        return 'fail'
     return data
 
 
@@ -227,9 +218,9 @@ def load_isy_vars():
         x = xmltodict.parse(r.text)
         update = int(x['var']['val'])
         logger.info('updateFurnace ' + str(update == 1))
-    except:
-        print('error')
-        logger.error('isy request exception')
+    except requests.exceptions.RequestException as e:
+        print('error: {}'.format(e))
+        logger.error('isy request exception: {}'.format(e))
         return 'fail', 0
     return isy, update
 
@@ -244,13 +235,13 @@ def change(data, isy):
         index=8,9 id=9,10 rh=relHumidity """
 
     f = ['vacatrunning', 'hold', 'currentActivity', 'rt', 'rh']
-    f[0] = data['status'][0]['vacatrunning'][0]
-    f[1] = data['status'][0]['zones'][0]['zone'][0]['hold'][0]
-    f[2] = data['status'][0]['zones'][0]['zone'][0]['currentActivity'][0]
-    f[3] = data['status'][0]['zones'][0]['zone'][0]['rt'][0]
-    f[4] = data['status'][0]['zones'][0]['zone'][0]['rh'][0]
+    f[0] = data['vacatrunning'][0]
+    f[1] = data['hold'][0]
+    f[2] = data['currentActivity'][0]
+    f[3] = data['rt'][0]
+    f[4] = data['rh'][0]
 
-    #i=['vacatrunning','hold','currentActivity','rt', 'rh']
+    # i=['vacatrunning','hold','currentActivity','rt', 'rh']
     i = [0, 0, 0, 0, 0]
     i[0] = int(isy['vars']['var'][args.index + 0]['val'])
     i[1] = int(isy['vars']['var'][args.index + 2]['val'])
@@ -293,8 +284,8 @@ def update_isy(f, i, c):
                 r = requests.get(s, auth=(isylogin, isypass))
                 if r.status_code != requests.codes.ok:
                     logger.error('isy update vac error =' + str(r.status_code))
-            except:
-                logger.error('isy update vacatrunning exception')
+            except requests.exceptions.RequestException as e:
+                logger.error('isy update vacatrunning exception: {}'.format(e))
         x = 1
         if c[x]:
             try:  # hold
@@ -305,8 +296,8 @@ def update_isy(f, i, c):
                 if r.status_code != requests.codes.ok:
                     logger.error('isy update hold error =' +
                                  str(r.status_code))
-            except:
-                logger.error('isy update hold exception')
+            except requests.exceptions.RequestException as e:
+                logger.error('isy update hold exception: {}'.format(e))
         x = 2
         if c[x]:
             try:  # currentActivity
@@ -317,8 +308,8 @@ def update_isy(f, i, c):
                 if r.status_code != requests.codes.ok:
                     logger.error('isy update activity error =' +
                                  str(r.status_code))
-            except:
-                logger.error('isy update activity exception')
+            except requests.exceptions.RequestException as e:
+                logger.error('isy update activity exception: {}'.format(e))
         x = 3
         if c[x]:
             try:  # temp
@@ -328,8 +319,8 @@ def update_isy(f, i, c):
                 if r.status_code != requests.codes.ok:
                     logger.error('isy update temp error =' +
                                  str(r.status_code))
-            except:
-                logger.error('isy update temperature exception')
+            except requests.exceptions.RequestException as e:
+                logger.error('isy update temperature exception: {}'.format(e))
         x = 4
         if c[x]:
             try:  # rh
@@ -339,16 +330,17 @@ def update_isy(f, i, c):
                                  auth=(isylogin, isypass))
                 if r.status_code != requests.codes.ok:
                     logger.error('isy update rh error =' + str(r.status_code))
-            except:
-                logger.error('isy update rh exception')
+            except requests.exceptions.RequestException as e:
+                logger.error('isy update rh exception: {}'.format(e))
         try:  # furnaceModeUpdate reset
             r = requests.get(isyip + '/rest/vars/set/2/27/0',
                              auth=(isylogin, isypass))
             if r.status_code != requests.codes.ok:
                 logger.error('isy update furnaceModeUpdate error =' +
                              str(r.status_code))
-        except:
-            logger.error('isy update furnaceModeUpdate exception')
+        except requests.exceptions.RequestException as e:
+            logger.error(
+                'isy update furnaceModeUpdate exception: {}'.format(e))
 
         try:  # furnaceTempUpdate set
             r = requests.get(isyip + '/rest/vars/set/2/37/1',
@@ -356,8 +348,9 @@ def update_isy(f, i, c):
             if r.status_code != requests.codes.ok:
                 logger.error('isy update furnaceTempUpdate error =' +
                              str(r.status_code))
-        except:
-            logger.error('isy update furnaceTempUpdate exception')
+        except requests.exceptions.RequestException as e:
+            logger.error(
+                'isy update furnaceTempUpdate exception: {}'.format(e))
     return
 
 
@@ -403,8 +396,8 @@ def aioUpdate(f):
         aio.send(activity, transActivity[f[2]])
         aio.send(temp, float(f[3]))
         aio.send(rh, float(f[4]))
-    except:
-        logger.error('AIO request error')
+    except AdafruitIOError as e:
+        logger.error('AIO request error: {}'.format(e))
         logger.error(activity)
         logger.error(temp)
         logger.error(rh)
@@ -424,13 +417,13 @@ def heartbeat(ast):
         r = requests.get(s, auth=(isylogin, isypass))
         if r.status_code != requests.codes.ok:
             logger.error('isy heartbeat error =' + str(r.status_code))
-    except:
-        logger.error('isy heartbeat exception')
+    except requests.exceptions.RequestException as e:
+        logger.error('isy heartbeat exception: {}'.format(e))
     return ast
 
 
 ###
-### main loop
+# main loop
 ###
 
 
@@ -485,7 +478,7 @@ def main():
             logger.info('keyboard exception')
             exit()
 
-        except:
+        except Exception:
             logger.info('program end:')
             exit()
     return
