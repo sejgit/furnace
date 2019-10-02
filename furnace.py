@@ -188,7 +188,7 @@ def prowl(event, description, pri=None):
 def load_status():
     try:
         # get status
-        data = requests.get('localhost:' + str(81 + args.index) +
+        data = requests.get('http://localhost:' + str(81 + args.index) +
                             '/api/status/1')
         if data.status_code != requests.codes.ok:
             logger.error('infinitude request error =' + str(data.status_code))
