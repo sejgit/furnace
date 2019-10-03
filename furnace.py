@@ -233,7 +233,7 @@ def change(data, isy):
         index=4,5 id=5,6  currentActivity
         index=6,7 id=7,8  rt=temp
         index=8,9 id=9,10 rh=relHumidity """
-
+    logger.info(data)
     f = ['vacatrunning', 'hold', 'currentActivity', 'rt', 'rh']
     f[0] = data[f[0]][0]
     f[1] = data['zones'][0]['zone'][0][f[1]][0]
