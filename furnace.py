@@ -188,11 +188,12 @@ def prowl(event, description, pri=None):
 def load_status():
     try:
         # get status
-        data = requests.get('http://localhost:' + str(81 + args.index) +
-                            '/api/status')
-        if data.status_code != requests.codes.ok:
-            logger.error('infinitude request error =' + str(data.status_code))
+        r = requests.get('http://localhost:' + str(81 + args.index) +
+                         '/api/status')
+        if r.status_code != requests.codes.ok:
+            logger.error('infinitude request error =' + str(r.status_code))
             raise
+        data = r.json()
     except requests.exceptions.RequestException as e:
         print('error: {}'.format(e))
         logger.error('isy request exception: {}'.format(e))
