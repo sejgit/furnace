@@ -189,7 +189,7 @@ def load_status():
     try:
         # get status
         data = requests.get('http://localhost:' + str(81 + args.index) +
-                            '/api/status/1')
+                            '/api/status')
         if data.status_code != requests.codes.ok:
             logger.error('infinitude request error =' + str(data.status_code))
             raise
@@ -235,11 +235,11 @@ def change(data, isy):
         index=8,9 id=9,10 rh=relHumidity """
 
     f = ['vacatrunning', 'hold', 'currentActivity', 'rt', 'rh']
-    f[0] = data['vacatrunning'][0]
-    f[1] = data['hold'][0]
-    f[2] = data['currentActivity'][0]
-    f[3] = data['rt'][0]
-    f[4] = data['rh'][0]
+    f[0] = data[f[0]][0]
+    f[1] = data['zones'][0]['zone'][0][f[1]][0]
+    f[2] = data['zones'][0]['zone'][0][f[2]][0]
+    f[3] = data['zones'][0]['zone'][0][f[3]][0]
+    f[4] = data['zones'][0]['zone'][0][f[4]][0]
 
     # i=['vacatrunning','hold','currentActivity','rt', 'rh']
     i = [0, 0, 0, 0, 0]
