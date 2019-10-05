@@ -8,6 +8,7 @@
 # 2017 03 10 update AIO every minute so can use server down service
 # 2018 05 20 add heartbeat for isy
 # 2019 10 01 updates for infinitude file changes
+# 2019 10 03 reformat with format-all (with black)
 
 ###
 # imports and parse args
@@ -22,48 +23,49 @@ import os
 import paul
 import argparse
 from Adafruit_IO import Client, AdafruitIOError
+
 # import json
 import requests
 import xmltodict
 
 # parsing
 parser = argparse.ArgumentParser(
-    description='Furnace control & data acquisition')
-parser.add_argument('-t',
-                    '--test',
-                    action='store_true',
-                    help='offline testing')
-parser.add_argument('-d', '--dir', help='home directory')
-parser.add_argument('-n',
-                    '--name',
-                    default='Furnace',
-                    help='name label for output like prowl')
-parser.add_argument('-s',
-                    '--stream',
-                    default='furnace',
-                    help='stream name for AIO')
-parser.add_argument('-i',
-                    '--index',
+    description="Furnace control & data acquisition")
+parser.add_argument("-t",
+                    "--test",
+                    action="store_true",
+                    help="offline testing")
+parser.add_argument("-d", "--dir", help="home directory")
+parser.add_argument("-n",
+                    "--name",
+                    default="Furnace",
+                    help="name label for output like prowl")
+parser.add_argument("-s",
+                    "--stream",
+                    default="furnace",
+                    help="stream name for AIO")
+parser.add_argument("-i",
+                    "--index",
                     default=0,
                     type=int,
-                    help='furnace index number for ISY vars')
-parser.add_argument('-l',
-                    '--lower',
+                    help="furnace index number for ISY vars")
+parser.add_argument("-l",
+                    "--lower",
                     default=50,
                     type=int,
-                    help='lower temperature alarm')
-parser.add_argument('-u',
-                    '--upper',
+                    help="lower temperature alarm")
+parser.add_argument("-u",
+                    "--upper",
                     default=90,
                     type=int,
-                    help='upper temperature alarm')
+                    help="upper temperature alarm")
 
 args = parser.parse_args()
 
 if args.dir:
-    dir = os.path.join(args.dir, '')
+    dir = os.path.join(args.dir, "")
 else:
-    dir = '/home/pi/furnace/'
+    dir = "/home/pi/furnace/"
 
 if os.path.isdir(dir):
     print("\n" + dir + "   ***using directory***\n")
@@ -76,9 +78,9 @@ userdir = os.path.expanduser("~pi")
 ###
 
 # set up a specific logger with desired output level
-LOG_FILENAME = dir + 'furnace' + str(args.index) + '.log'
+LOG_FILENAME = dir + "furnace" + str(args.index) + ".log"
 
-logger = logging.getLogger('FurnaceLogger')
+logger = logging.getLogger("FurnaceLogger")
 
 # add the rotating log message handler
 fh = logging.handlers.RotatingFileHandler(LOG_FILENAME,
@@ -92,17 +94,17 @@ else:
     fh.setLevel(logging.INFO)
 
 # create formatter and add it to the handlers
-formatter = logging.Formatter(fmt='%(asctime)s %(levelname)s %(message)s',
-                              datefmt='%Y-%m-%d %H:%M:%S')
+formatter = logging.Formatter(fmt="%(asctime)s %(levelname)s %(message)s",
+                              datefmt="%Y-%m-%d %H:%M:%S")
 fh.setFormatter(formatter)
 
 # add the handlers to the logger
 logger.addHandler(fh)
 
-logger.info('***start program')
-logger.info('using directory  ' + dir)
-logger.info('testing = ' + str(args.test))
-logger.info('userpath=' + userdir)
+logger.info("***start program")
+logger.info("using directory  " + dir)
+logger.info("testing = " + str(args.test))
+logger.info("userpath=" + userdir)
 
 ###
 # variables
@@ -122,7 +124,7 @@ except IOError as e:
 # AIO vars
 try:
     ADAFRUIT_IO_USERNAME = ""
-    ADAFRUIT_IO_KEY = ''
+    ADAFRUIT_IO_KEY = ""
     with open(os.path.join(userdir, ".ssh/aio.key"), "r") as f:
         ADAFRUIT_IO_USERNAME = f.readline()
         ADAFRUIT_IO_USERNAME = ADAFRUIT_IO_USERNAME.rstrip()
@@ -150,8 +152,8 @@ try:
 except IOError as e:
     logger.error("Could not read ISY auth file: {}".format(e))
 
-transOnOff = {'on': 1, 'off': 0}
-transActivity = {'none': 0, 'wake': 1, 'away': 2, 'home': 3, 'sleep': 4}
+transOnOff = {"on": 1, "off": 0}
+transActivity = {"none": 0, "wake": 1, "away": 2, "home": 3, "sleep": 4}
 
 ###
 # defined functions
@@ -171,7 +173,7 @@ def prowl(event, description, pri=None):
                    priority=args.priority)
             """
         if args.test:
-            print('send prowl')
+            print("send prowl")
         else:
             # prowl push to sej
             p.push(apikey1,
@@ -181,48 +183,48 @@ def prowl(event, description, pri=None):
                    url=None,
                    priority=pri)
     except IOError as e:
-        logger.error('prowl error: {}'.format(e))
+        logger.error("prowl error: {}".format(e))
     return
 
 
 def load_status():
     try:
         # get status
-        r = requests.get('http://localhost:' + str(81 + args.index) +
-                         '/api/status')
+        r = requests.get("http://localhost:" + str(81 + args.index) +
+                         "/api/status")
         if r.status_code != requests.codes.ok:
-            logger.error('infinitude request error =' + str(r.status_code))
+            logger.error("infinitude request error =" + str(r.status_code))
             raise
         data = r.json()
     except requests.exceptions.RequestException as e:
-        print('error: {}'.format(e))
-        logger.error('isy request exception: {}'.format(e))
-        return 'fail'
+        print("error: {}".format(e))
+        logger.error("isy request exception: {}".format(e))
+        return "fail"
     return data
 
 
 def load_isy_vars():
     try:
         # get integer variables
-        r = requests.get(isyip + '/rest/vars/get/1', auth=(isylogin, isypass))
+        r = requests.get(isyip + "/rest/vars/get/1", auth=(isylogin, isypass))
         if r.status_code != requests.codes.ok:
-            logger.error('isy integer request error =' + str(r.status_code))
+            logger.error("isy integer request error =" + str(r.status_code))
             raise
         isy = xmltodict.parse(r.text)
 
         # get state value of updateFurnace (means change was ISY pushed)
-        r = requests.get(isyip + '/rest/vars/get/2/27',
+        r = requests.get(isyip + "/rest/vars/get/2/27",
                          auth=(isylogin, isypass))
         if r.status_code != requests.codes.ok:
-            logger.error('isy state request error =' + str(r.status_code))
+            logger.error("isy state request error =" + str(r.status_code))
             raise
         x = xmltodict.parse(r.text)
-        update = int(x['var']['val'])
-        logger.info('updateFurnace ' + str(update == 1))
+        update = int(x["var"]["val"])
+        logger.info("updateFurnace " + str(update == 1))
     except requests.exceptions.RequestException as e:
-        print('error: {}'.format(e))
-        logger.error('isy request exception: {}'.format(e))
-        return 'fail', 0
+        print("error: {}".format(e))
+        logger.error("isy request exception: {}".format(e))
+        return "fail", 0
     return isy, update
 
 
@@ -234,20 +236,20 @@ def change(data, isy):
         index=4,5 id=5,6  currentActivity
         index=6,7 id=7,8  rt=temp
         index=8,9 id=9,10 rh=relHumidity """
-    f = ['vacatrunning', 'hold', 'currentActivity', 'rt', 'rh']
+    f = ["vacatrunning", "hold", "currentActivity", "rt", "rh"]
     f[0] = data[f[0]][0]
-    f[1] = data['zones'][0]['zone'][0][f[1]][0]
-    f[2] = data['zones'][0]['zone'][0][f[2]][0]
-    f[3] = data['zones'][0]['zone'][0][f[3]][0]
-    f[4] = data['zones'][0]['zone'][0][f[4]][0]
+    f[1] = data["zones"][0]["zone"][0][f[1]][0]
+    f[2] = data["zones"][0]["zone"][0][f[2]][0]
+    f[3] = data["zones"][0]["zone"][0][f[3]][0]
+    f[4] = data["zones"][0]["zone"][0][f[4]][0]
 
     # i=['vacatrunning','hold','currentActivity','rt', 'rh']
     i = [0, 0, 0, 0, 0]
-    i[0] = int(isy['vars']['var'][args.index + 0]['val'])
-    i[1] = int(isy['vars']['var'][args.index + 2]['val'])
-    i[2] = int(isy['vars']['var'][args.index + 4]['val'])
-    i[3] = int(isy['vars']['var'][args.index + 6]['val'])
-    i[4] = int(isy['vars']['var'][args.index + 8]['val'])
+    i[0] = int(isy["vars"]["var"][args.index + 0]["val"])
+    i[1] = int(isy["vars"]["var"][args.index + 2]["val"])
+    i[2] = int(isy["vars"]["var"][args.index + 4]["val"])
+    i[3] = int(isy["vars"]["var"][args.index + 6]["val"])
+    i[4] = int(isy["vars"]["var"][args.index + 8]["val"])
 
     c = [True, True, True, True, True]
     c[0] = not (transOnOff[f[0]] == i[0])
@@ -258,108 +260,116 @@ def change(data, isy):
 
     changemode = True
     changeany = True
-    if (not (c[0] or c[1] or c[2])):
+    if not (c[0] or c[1] or c[2]):
         changemode = False
-        logger.info('changemode=False')
+        logger.info("changemode=False")
     else:
-        logger.info('changemode=True')
-    if (not (c[0] or c[1] or c[2] or c[3] or c[4])):
+        logger.info("changemode=True")
+    if not (c[0] or c[1] or c[2] or c[3] or c[4]):
         changeany = False  # no change has happened
-        logger.info('changeany=False')
+        logger.info("changeany=False")
     else:
-        logger.info('changeany=True')
+        logger.info("changeany=True")
     logger.info(f + i + c)
     return changeany, changemode, f, i, c
 
 
 def update_isy(f, i, c):
     if args.test:
-        print('test mode no isy update')
+        print("test mode no isy update")
     else:
         x = 0
         if c[x]:
             try:  # vacatrunning
-                s = isyip + '/rest/vars/set/1/' + str(
-                    (x * 2) + args.index + 1) + '/' + str(transOnOff[f[x]])
+                s = (isyip + "/rest/vars/set/1/" +
+                     str((x * 2) + args.index + 1) + "/" +
+                     str(transOnOff[f[x]]))
                 r = requests.get(s, auth=(isylogin, isypass))
                 if r.status_code != requests.codes.ok:
-                    logger.error('isy update vac error =' + str(r.status_code))
+                    logger.error("isy update vac error =" + str(r.status_code))
             except requests.exceptions.RequestException as e:
-                logger.error('isy update vacatrunning exception: {}'.format(e))
+                logger.error("isy update vacatrunning exception: {}".format(e))
         x = 1
         if c[x]:
             try:  # hold
-                r = requests.get(isyip + '/rest/vars/set/1/' +
-                                 str((x * 2) + args.index + 1) + '/' +
-                                 str(transOnOff[f[x]]),
-                                 auth=(isylogin, isypass))
+                r = requests.get(
+                    isyip + "/rest/vars/set/1/" +
+                    str((x * 2) + args.index + 1) + "/" +
+                    str(transOnOff[f[x]]),
+                    auth=(isylogin, isypass),
+                )
                 if r.status_code != requests.codes.ok:
-                    logger.error('isy update hold error =' +
+                    logger.error("isy update hold error =" +
                                  str(r.status_code))
             except requests.exceptions.RequestException as e:
-                logger.error('isy update hold exception: {}'.format(e))
+                logger.error("isy update hold exception: {}".format(e))
         x = 2
         if c[x]:
             try:  # currentActivity
-                r = requests.get(isyip + '/rest/vars/set/1/' +
-                                 str((x * 2) + args.index + 1) + '/' +
-                                 str(transActivity[f[x]]),
-                                 auth=(isylogin, isypass))
+                r = requests.get(
+                    isyip + "/rest/vars/set/1/" +
+                    str((x * 2) + args.index + 1) + "/" +
+                    str(transActivity[f[x]]),
+                    auth=(isylogin, isypass),
+                )
                 if r.status_code != requests.codes.ok:
-                    logger.error('isy update activity error =' +
+                    logger.error("isy update activity error =" +
                                  str(r.status_code))
             except requests.exceptions.RequestException as e:
-                logger.error('isy update activity exception: {}'.format(e))
+                logger.error("isy update activity exception: {}".format(e))
         x = 3
         if c[x]:
             try:  # temp
-                s = isyip + '/rest/vars/set/1/' + str(
-                    (x * 2) + args.index + 1) + '/' + str(int(float(f[x])))
+                s = (isyip + "/rest/vars/set/1/" +
+                     str((x * 2) + args.index + 1) + "/" +
+                     str(int(float(f[x]))))
                 r = requests.get(s, auth=(isylogin, isypass))
                 if r.status_code != requests.codes.ok:
-                    logger.error('isy update temp error =' +
+                    logger.error("isy update temp error =" +
                                  str(r.status_code))
             except requests.exceptions.RequestException as e:
-                logger.error('isy update temperature exception: {}'.format(e))
+                logger.error("isy update temperature exception: {}".format(e))
         x = 4
         if c[x]:
             try:  # rh
-                r = requests.get(isyip + '/rest/vars/set/1/' +
-                                 str((x * 2) + args.index + 1) + '/' +
-                                 str(int(float(f[x]))),
-                                 auth=(isylogin, isypass))
+                r = requests.get(
+                    isyip + "/rest/vars/set/1/" +
+                    str((x * 2) + args.index + 1) + "/" +
+                    str(int(float(f[x]))),
+                    auth=(isylogin, isypass),
+                )
                 if r.status_code != requests.codes.ok:
-                    logger.error('isy update rh error =' + str(r.status_code))
+                    logger.error("isy update rh error =" + str(r.status_code))
             except requests.exceptions.RequestException as e:
-                logger.error('isy update rh exception: {}'.format(e))
+                logger.error("isy update rh exception: {}".format(e))
         try:  # furnaceModeUpdate reset
-            r = requests.get(isyip + '/rest/vars/set/2/27/0',
+            r = requests.get(isyip + "/rest/vars/set/2/27/0",
                              auth=(isylogin, isypass))
             if r.status_code != requests.codes.ok:
-                logger.error('isy update furnaceModeUpdate error =' +
+                logger.error("isy update furnaceModeUpdate error =" +
                              str(r.status_code))
         except requests.exceptions.RequestException as e:
             logger.error(
-                'isy update furnaceModeUpdate exception: {}'.format(e))
+                "isy update furnaceModeUpdate exception: {}".format(e))
 
         try:  # furnaceTempUpdate set
-            r = requests.get(isyip + '/rest/vars/set/2/37/1',
+            r = requests.get(isyip + "/rest/vars/set/2/37/1",
                              auth=(isylogin, isypass))
             if r.status_code != requests.codes.ok:
-                logger.error('isy update furnaceTempUpdate error =' +
+                logger.error("isy update furnaceTempUpdate error =" +
                              str(r.status_code))
         except requests.exceptions.RequestException as e:
             logger.error(
-                'isy update furnaceTempUpdate exception: {}'.format(e))
+                "isy update furnaceTempUpdate exception: {}".format(e))
     return
 
 
 def update_prowl_mode(f, i, c, update):
     if "status_old" not in update_prowl_mode.__dict__:
-        update_prowl_mode.status_old = 'first run'
+        update_prowl_mode.status_old = "first run"
     else:
-        update_prowl_mode.status_old = 'mode change'
-    description = 'currAct:' + f[2] + ' hold:' + f[1] + ' vac:' + f[0]
+        update_prowl_mode.status_old = "mode change"
+    description = "currAct:" + f[2] + " hold:" + f[1] + " vac:" + f[0]
     logger.info(update_prowl_mode.status_old + ": " + description)
     prowl(update_prowl_mode.status_old, description, ((update == 0) * -2))
     return
@@ -367,37 +377,39 @@ def update_prowl_mode(f, i, c, update):
 
 def check_temp(temp):
     if temp > args.upper:
-        status = 'hi'
+        status = "hi"
     elif temp < args.lower:
-        status = 'lo'
+        status = "lo"
     else:
-        status = 'ok'
+        status = "ok"
     return status
 
 
 def prowl_temp(f, i, c, force):
     if "status_old" not in prowl_temp.__dict__:
-        prowl_temp.status_old = 'first run'
+        prowl_temp.status_old = "first run"
     status = check_temp(float(f[3]))
 
-    if (status != prowl_temp.status_old or force):
-        prowl('temp ',
-              (" *** " + status + " " + str(f[3]) + ' ***  rh ' + str(f[4])),
-              ((status == 'ok') * -2))
+    if status != prowl_temp.status_old or force:
+        prowl(
+            "temp ",
+            (" *** " + status + " " + str(f[3]) + " ***  rh " + str(f[4])),
+            ((status == "ok") * -2),
+        )
         prowl_temp.status_old = status
     return
 
 
 def aioUpdate(f):
     try:
-        activity = args.stream + str(args.index) + 'activity'
-        temp = args.stream + str(args.index) + 'temp'
-        rh = args.stream + str(args.index) + 'rh'
+        activity = args.stream + str(args.index) + "activity"
+        temp = args.stream + str(args.index) + "temp"
+        rh = args.stream + str(args.index) + "rh"
         aio.send(activity, transActivity[f[2]])
         aio.send(temp, float(f[3]))
         aio.send(rh, float(f[4]))
     except AdafruitIOError as e:
-        logger.error('AIO request error: {}'.format(e))
+        logger.error("AIO request error: {}".format(e))
         logger.error(activity)
         logger.error(temp)
         logger.error(rh)
@@ -409,16 +421,16 @@ def aioUpdate(f):
 def heartbeat(ast):
     if ast == " ":
         ast = "*"
-        s = isyip + '/rest/vars/set/2/' + str(45 + args.index) + '/1'
+        s = isyip + "/rest/vars/set/2/" + str(45 + args.index) + "/1"
     else:
         ast = " "
-        s = isyip + '/rest/vars/set/2/' + str(45 + args.index) + '/0'
+        s = isyip + "/rest/vars/set/2/" + str(45 + args.index) + "/0"
     try:  # heartbeat
         r = requests.get(s, auth=(isylogin, isypass))
         if r.status_code != requests.codes.ok:
-            logger.error('isy heartbeat error =' + str(r.status_code))
+            logger.error("isy heartbeat error =" + str(r.status_code))
     except requests.exceptions.RequestException as e:
-        logger.error('isy heartbeat exception: {}'.format(e))
+        logger.error("isy heartbeat exception: {}".format(e))
     return ast
 
 
@@ -429,15 +441,15 @@ def heartbeat(ast):
 
 def main():
     timestamp = dt.datetime.now().time()
-    logger.info('nowtime =' + str(timestamp)[:5])
+    logger.info("nowtime =" + str(timestamp)[:5])
 
     # log & push status on first run
     hb = "*"
     while True:
         data = load_status()
         isy, update = load_isy_vars()
-        if data == 'fail' or isy == 'fail':
-            logger.error('repeat failure: load data or isy')
+        if data == "fail" or isy == "fail":
+            logger.error("repeat failure: load data or isy")
             time.sleep(30)
         else:
             break
@@ -449,8 +461,8 @@ def main():
     prowl_temp(f, i, c, True)
 
     if args.test:
-        print('testing done')
-        logger.info('testing done')
+        print("testing done")
+        logger.info("testing done")
         return
 
     while True:
@@ -460,8 +472,8 @@ def main():
             while True:
                 data = load_status()
                 isy, update = load_isy_vars()
-                if data == 'fail' or isy == 'fail':
-                    logger.error('repeat failure: load data or isy')
+                if data == "fail" or isy == "fail":
+                    logger.error("repeat failure: load data or isy")
                     time.sleep(30)
                 else:
                     break
@@ -474,16 +486,16 @@ def main():
             aioUpdate(f)
 
         except KeyboardInterrupt:
-            print('\n\nKeyboard exception. Exiting.\n')
-            logger.info('keyboard exception')
+            print("\n\nKeyboard exception. Exiting.\n")
+            logger.info("keyboard exception")
             exit()
 
         except Exception:
-            logger.info('program end:')
+            logger.info("program end:")
             exit()
     return
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
     exit()
