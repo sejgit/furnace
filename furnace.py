@@ -8,6 +8,7 @@
 # 2017 03 10 update AIO every minute so can use server down service
 # 2018 05 20 add heartbeat for isy
 # 2019 10 01 updates for infinitude file changes
+# 2019 11 20 better error logging for final error
 
 ###
 # imports and parse args
@@ -478,8 +479,8 @@ def main():
             logger.info('keyboard exception')
             exit()
 
-        except Exception:
-            logger.info('program end:')
+        except Exception as e:
+            logger.info('program end: Error! Code: {c}, Message, {m}'.format(c = type(e).__name__, m = str(e)))
             exit()
     return
 
